@@ -21,7 +21,10 @@ export function createApp() {
       const auth = process.env.TELEGRAM_BOT_TOKEN
         ? validateTelegramInitData(initData, process.env.TELEGRAM_BOT_TOKEN)
         : { ok: true, developmentMode: true };
-      if (!auth.ok) return res.status(401).json({ error: 'Telegram authorization failed' });
+      if (!auth.ok) {
+        console.error('Telegram auth failed:', auth.reason, '| initData length:', initData.length);
+        return res.status(401).json({ error: 'Telegram authorization failed', reason: auth.reason });
+      }
 
       const market = await getCandles(pair, interval, 120);
       const prediction = predictDirection(market.candles);
