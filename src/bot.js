@@ -1,5 +1,5 @@
 import 'dotenv/config';
-import { Telegraf } from 'telegraf';
+import { Telegraf, Markup } from 'telegraf';
 
 export function createBot(token, webAppUrl) {
   if (!token) throw new Error('TELEGRAM_BOT_TOKEN не задан в .env');
@@ -8,21 +8,33 @@ export function createBot(token, webAppUrl) {
 
   bot.start((ctx) => {
     const text =
-      'Привет! Я бот с вероятностными сигналами по валютным парам (ВВЕРХ / ВНИЗ / ПРОПУСТИТЬ).\n\n' +
-      (webAppUrl
-        ? 'Нажми кнопку «Сигналы» рядом со строкой ввода сообщения, чтобы открыть аналитику.\n\n'
-        : '') +
-      'Команды:\n' +
+      '👋 <b>Привет! Я TradingAI Signals</b> — бот с вероятностными сигналами ' +
+      'по валютным парам (ВВЕРХ / ВНИЗ / ПРОПУСТИТЬ)\n\n' +
+      '📊 Анализирую рынок и присылаю сигнал с оценкой вероятности движения — ' +
+      'решение всегда за тобой\n\n' +
+      (webAppUrl ? '👉 Нажми кнопку ниже, чтобы открыть аналитику\n\n' : '') +
+      '<b>Команды:</b>\n' +
       '/start — это сообщение\n' +
       '/help — справка';
 
-    return ctx.reply(text);
+    const keyboard = webAppUrl
+      ? Markup.inlineKeyboard([
+          Markup.button.webApp('📈 Открыть сигналы', webAppUrl),
+        ])
+      : undefined;
+
+    return ctx.reply(text, {
+      parse_mode: 'HTML',
+      ...(keyboard || {}),
+    });
   });
 
   bot.help((ctx) => {
     ctx.reply(
+      '❓ <b>Справка</b>\n\n' +
       'Это MVP-бот сигналов. Модель не гарантирует доход и не размещает сделки — ' +
-      'решения принимает пользователь.'
+      'решения принимает пользователь.',
+      { parse_mode: 'HTML' }
     );
   });
 
