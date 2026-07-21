@@ -2,6 +2,14 @@ const tg = window.Telegram?.WebApp;
 tg?.ready(); tg?.expand();
 const $ = id => document.getElementById(id);
 
+// Временная диагностика — покажет прямо на странице, видит ли она Telegram WebApp API.
+document.addEventListener('DOMContentLoaded', () => {
+  const debug = document.createElement('p');
+  debug.style.cssText = 'font-size:11px;opacity:.6;word-break:break-all;padding:4px 8px;';
+  debug.textContent = `debug: tg=${!!tg}, initData.length=${(tg?.initData || '').length}, platform=${tg?.platform || 'n/a'}, version=${tg?.version || 'n/a'}`;
+  document.querySelector('main')?.prepend(debug);
+});
+
 function drawChart(candles, direction) {
   const canvas = $('chart'), ctx = canvas.getContext('2d');
   const dpr = window.devicePixelRatio || 1;
