@@ -12,7 +12,7 @@ export function createApp() {
   const __dirname = path.dirname(fileURLToPath(import.meta.url));
   app.use(helmet({ contentSecurityPolicy: false }));
   app.use(express.json({ limit: '50kb' }));
-  app.use(express.static(path.join(__dirname, '../public')));
+  app.use(express.static(path.join(__dirname, '../public'), { etag: false, lastModified: false, maxAge: 0, setHeaders: (res) => res.set('Cache-Control', 'no-store') }));
 
   app.get('/api/health', (_, res) => res.json({ ok: true }));
   app.post('/api/signal', async (req, res) => {

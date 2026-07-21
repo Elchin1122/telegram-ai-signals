@@ -11,9 +11,11 @@ document.addEventListener('DOMContentLoaded', () => {
     const debug = document.createElement('p');
     debug.style.cssText = 'font-size:10px;opacity:.6;word-break:break-all;padding:4px 8px;';
     const unsafeKeys = tg?.initDataUnsafe ? Object.keys(tg.initDataUnsafe).join(',') : 'нет';
+    const hashParams = new URLSearchParams(location.hash.slice(1));
+    const rawInitData = hashParams.get('tgWebAppData') || '';
     debug.textContent =
       `debug: tg=${!!tg}, initData.length=${(tg?.initData || '').length}, platform=${tg?.platform || 'n/a'}, version=${tg?.version || 'n/a'} | ` +
-      `hash.length=${location.hash.length}, hashStart="${location.hash.slice(0, 40)}" | unsafeKeys=${unsafeKeys} | lastError=${lastError}`;
+      `hash.length=${location.hash.length}, rawInitData.length=${rawInitData.length}, rawInitDataStart="${rawInitData.slice(0, 60)}" | unsafeKeys=${unsafeKeys} | lastError=${lastError}`;
     document.querySelector('main')?.prepend(debug);
   }, 300);
 });
