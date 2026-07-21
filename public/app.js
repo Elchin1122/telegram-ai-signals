@@ -5,8 +5,11 @@ const $ = id => document.getElementById(id);
 // Временная диагностика — покажет прямо на странице, видит ли она Telegram WebApp API.
 document.addEventListener('DOMContentLoaded', () => {
   const debug = document.createElement('p');
-  debug.style.cssText = 'font-size:11px;opacity:.6;word-break:break-all;padding:4px 8px;';
-  debug.textContent = `debug: tg=${!!tg}, initData.length=${(tg?.initData || '').length}, platform=${tg?.platform || 'n/a'}, version=${tg?.version || 'n/a'}`;
+  debug.style.cssText = 'font-size:10px;opacity:.6;word-break:break-all;padding:4px 8px;';
+  const unsafeKeys = tg?.initDataUnsafe ? Object.keys(tg.initDataUnsafe).join(',') : 'нет';
+  debug.textContent =
+    `debug: tg=${!!tg}, initData.length=${(tg?.initData || '').length}, platform=${tg?.platform || 'n/a'}, version=${tg?.version || 'n/a'} | ` +
+    `hash.length=${location.hash.length}, search.length=${location.search.length} | unsafeKeys=${unsafeKeys}`;
   document.querySelector('main')?.prepend(debug);
 });
 
