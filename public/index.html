@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+  <title>AI Currency Signals</title>
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+  <link rel="stylesheet" href="/styles.css" />
+</head>
+<body>
+  <main class="wrap">
+    <section class="hero">
+      <div><span class="badge">AI ANALYSIS</span><h1>Currency Signal</h1><p>Анализ направления валютной пары по техническим признакам.</p></div>
+      <div class="status" id="status">Готов</div>
+    </section>
+
+    <section class="panel controls">
+      <label>Валютная пара<select id="pair"><option>EUR/USD</option><option>GBP/USD</option><option>USD/JPY</option><option>AUD/USD</option><option>USD/CAD</option><option>EUR/JPY</option></select></label>
+      <label>Таймфрейм<select id="interval"><option value="1min">1 минута</option><option value="5min">5 минут</option><option value="15min">15 минут</option></select></label>
+      <button id="analyze">Получить AI‑сигнал</button>
+    </section>
+
+    <section class="signal panel" id="signal">
+      <div class="signalIcon" id="signalIcon">—</div>
+      <div><small>ТЕКУЩИЙ СИГНАЛ</small><h2 id="direction">Нет данных</h2><p id="explanation">Нажмите кнопку анализа.</p></div>
+      <div class="confidence"><small>Уверенность</small><strong id="confidence">—</strong></div>
+    </section>
+
+    <canvas id="chart" width="700" height="250" aria-label="График последних цен"></canvas>
+    <section class="metrics" id="metrics"></section>
+    <p class="risk">⚠️ Это экспериментальная аналитика, а не финансовая рекомендация. Прогноз может быть ошибочным. Не используйте заемные средства и сначала тестируйте только на демо‑счете.</p>
+  </main>
+  <script src="/app.js"></script>
+</body>
+</html>
