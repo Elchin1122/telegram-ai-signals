@@ -1,5 +1,5 @@
 import 'dotenv/config';
-import { Telegraf, Markup } from 'telegraf';
+import { Telegraf } from 'telegraf';
 
 export function createBot(token, webAppUrl) {
   if (!token) throw new Error('TELEGRAM_BOT_TOKEN не задан в .env');
@@ -9,17 +9,14 @@ export function createBot(token, webAppUrl) {
   bot.start((ctx) => {
     const text =
       'Привет! Я бот с вероятностными сигналами по валютным парам (ВВЕРХ / ВНИЗ / ПРОПУСТИТЬ).\n\n' +
+      (webAppUrl
+        ? 'Нажми кнопку «Сигналы» рядом со строкой ввода сообщения, чтобы открыть аналитику.\n\n'
+        : '') +
       'Команды:\n' +
       '/start — это сообщение\n' +
       '/help — справка';
 
-    if (webAppUrl) {
-      return ctx.reply(
-        text,
-        Markup.keyboard([Markup.button.webApp('📊 Открыть сигналы', webAppUrl)]).resize()
-      );
-    }
-    return ctx.reply(text + '\n\n(веб-интерфейс пока не подключён — PUBLIC_URL не задан)');
+    return ctx.reply(text);
   });
 
   bot.help((ctx) => {

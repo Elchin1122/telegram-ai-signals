@@ -2,25 +2,6 @@ const tg = window.Telegram?.WebApp;
 tg?.ready(); tg?.expand();
 const $ = id => document.getElementById(id);
 
-// Временная диагностика — покажет прямо на странице, видит ли она Telegram WebApp API.
-let lastError = 'нет';
-window.addEventListener('error', (e) => { lastError = `${e.message} @ ${e.filename}:${e.lineno}`; });
-
-document.addEventListener('DOMContentLoaded', () => {
-  setTimeout(() => {
-    const debug = document.createElement('p');
-    debug.style.cssText = 'font-size:10px;opacity:.6;word-break:break-all;padding:4px 8px;';
-    const unsafeKeys = tg?.initDataUnsafe ? Object.keys(tg.initDataUnsafe).join(',') : 'нет';
-    const hashParams = new URLSearchParams(location.hash.slice(1));
-    const hashKeys = [...hashParams.keys()].join(',');
-    const rawInitData = hashParams.get('tgWebAppData') || '';
-    debug.textContent =
-      `debug: tg=${!!tg}, initData.length=${(tg?.initData || '').length}, platform=${tg?.platform || 'n/a'}, version=${tg?.version || 'n/a'} | ` +
-      `hash.length=${location.hash.length}, hashKeys="${hashKeys}", rawInitData.length=${rawInitData.length} | unsafeKeys=${unsafeKeys} | lastError=${lastError}`;
-    document.querySelector('main')?.prepend(debug);
-  }, 300);
-});
-
 function drawChart(candles, direction) {
   const canvas = $('chart'), ctx = canvas.getContext('2d');
   const dpr = window.devicePixelRatio || 1;
