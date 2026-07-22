@@ -12,6 +12,12 @@ function seededNoise(seed) {
   return x - Math.floor(x);
 }
 
+function hashString(str) {
+  let h = 0;
+  for (let i = 0; i < str.length; i++) h = (Math.imul(h, 31) + str.charCodeAt(i)) >>> 0;
+  return h;
+}
+
 const STEP_MS = {
   '5sec': 5000, '15sec': 15000,
   '1min': 60000, '3min': 180000, '5min': 300000, '10min': 600000, '15min': 900000,
@@ -32,10 +38,14 @@ function demoCandles(pair, interval = '1min', count = 120) {
   const candles = [];
   const stepMs = STEP_MS[interval] ?? 60000;
   const now = Date.now();
+  // Хэш пары даёт каждой паре свою "личность": частоту тренда, фазу и сдвиг шума.
+  const seed = hashString(pair + '|' + interval);
+  const freq = 6 + (seed % 11); // 6..16 — разная "волнистость" тренда
+  const phase = (seed % 1000) / 1000 * Math.PI * 2;
   for (let i = count - 1; i >= 0; i--) {
     const t = now - i * stepMs;
-    const drift = Math.sin((count - i) / 11) * price * 0.00012;
-    const noise = (seededNoise(Math.floor(t / stepMs) + pair.length) - 0.5) * price * 0.0007;
+    const drift = Math.sin((count - i) / freq + phase) * price * 0.00012;
+    const noise = (seededNoise(Math.floor(t / stepMs) + seed) - 0.5) * price * 0.0007;
     const open = price;
     const close = Math.max(0.00001, open + drift + noise);
     const wick = Math.abs(noise) * 0.7 + price * 0.00008;
