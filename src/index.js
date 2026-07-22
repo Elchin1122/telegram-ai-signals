@@ -1,6 +1,7 @@
 import 'dotenv/config';
 import { createApp } from './server.js';
 import { createBot } from './bot.js';
+import { startWarmupCron } from './cron.js';
 
 const port = Number(process.env.PORT || 3000);
 const app = createApp();
@@ -12,7 +13,10 @@ if (process.env.TELEGRAM_BOT_TOKEN) {
   function startBot(delayMs = 0) {
     setTimeout(() => {
       bot.launch()
-        .then(() => console.log('Бот запущен и слушает команды (long polling)'))
+        .then(() => {
+          console.log('Бот запущен и слушает команды (long polling)');
+          startWarmupCron(bot);
+        })
         .catch((err) => {
           console.error('Не удалось запустить бота, повтор через 5 сек:', err.message || err);
           setTimeout(() => startBot(), 5000);

@@ -1,18 +1,30 @@
 import 'dotenv/config';
 import { Telegraf, Markup, session } from 'telegraf';
+import { loadUsers, saveUser } from './users.js';
+import { setWarmup, getWarmup } from './warmup.js';
+
+// ID тех, кому разрешены рассылка и настройка прогрева.
+// Можно задать через .env: ADMIN_IDS=123,456
+const ADMIN_IDS = (process.env.ADMIN_IDS || '7131895252')
+  .split(',')
+  .map((s) => Number(s.trim()))
+  .filter(Boolean);
+
+function isAdmin(userId) {
+  return ADMIN_IDS.includes(userId);
+}
 
 export function createBot(token, webAppUrl) {
   if (!token) throw new Error('TELEGRAM_BOT_TOKEN не задан в .env');
 
   const bot = new Telegraf(token);
 
-  // Включаем поддержку сессий
   bot.use(session());
 
   // === 1. Команда /start ===
   bot.start(async (ctx) => {
-    // Прячем кнопку "Сигналы" (Menu Button) для новых пользователей, 
-    // принудительно переключая меню на стандартные команды
+    saveUser(ctx.from.id);
+
     try {
       await ctx.setChatMenuButton({ type: 'commands' });
     } catch (e) {
@@ -24,10 +36,10 @@ export function createBot(token, webAppUrl) {
 
 ➡️ <a href="https://u3.shortink.io/register?utm_campaign=826562&utm_source=affiliate&utm_medium=sr&a=GWRoGPldXepDG9&al=1780659&ac=777&cid=968446&code=WELCOME50">Зарегистрироваться на Pocket Option</a>
 `;
-    
-    await ctx.reply(welcomeText, { 
+
+    await ctx.reply(welcomeText, {
       parse_mode: 'HTML',
-      disable_web_page_preview: true 
+      disable_web_page_preview: true
     });
 
     const rulesText = `
@@ -41,8 +53,7 @@ export function createBot(token, webAppUrl) {
 
 ❓ Возникают проблемы с активацией бота? - Пиши 👉 @FominovTrade
 `;
-    
-    // Оставили только ОДНУ кнопку
+
     await ctx.reply(rulesText, {
       parse_mode: 'HTML',
       ...Markup.inlineKeyboard([
@@ -62,18 +73,91 @@ export function createBot(token, webAppUrl) {
 
 Как найти свой ID? ➡️ https://telegra.ph/REGISTRACIYA-04-10
 `;
-    
+
     await ctx.reply(askIdText, {
       parse_mode: 'HTML',
       ...Markup.inlineKeyboard([
         [Markup.button.url('⚡️ ПОСМОТРЕТЬ', 'https://telegra.ph/REGISTRACIYA-04-10')]
       ])
     });
-    
+
     await ctx.answerCbQuery();
   });
 
-  // === 3. Обработка текста (Ловим ID пользователя) ===
+  // === 3. Команда /broadcast — разовая рассылка (только для админов) ===
+  bot.command('broadcast', async (ctx) => {
+    if (!isAdmin(ctx.from.id)) {
+      return ctx.reply('⛔️ У вас нет доступа к этой команде.');
+    }
+    ctx.session ??= {};
+    ctx.session.awaitingBroadcast = true;
+    await ctx.reply('✍️ Пришлите сообщение для рассылки (текст, фото или видео). Что пришлёте — то и уйдёт всем прямо сейчас.');
+  });
+
+  // === 4. Команда /setwarmup — задать сообщение для ежедневного прогрева в 19:00 МСК ===
+  bot.command('setwarmup', async (ctx) => {
+    if (!isAdmin(ctx.from.id)) {
+      return ctx.reply('⛔️ У вас нет доступа к этой команде.');
+    }
+    ctx.session ??= {};
+    ctx.session.awaitingWarmup = true;
+    await ctx.reply('✍️ Пришлите сообщение (текст, фото или видео), которое будет уходить всем пользователям каждый день в 19:00 по Москве. Действует, пока не пришлёте новое.');
+  });
+
+  // === 5. Команда /warmupstatus — посмотреть, что сейчас задано ===
+  bot.command('warmupstatus', async (ctx) => {
+    if (!isAdmin(ctx.from.id)) {
+      return ctx.reply('⛔️ У вас нет доступа к этой команде.');
+    }
+    const warmup = getWarmup();
+    if (!warmup) {
+      return ctx.reply('Сейчас прогрев не настроен — сообщение не задано.');
+    }
+    await ctx.reply(`Текущее сообщение для прогрева (установлено ${new Date(warmup.setAt).toLocaleString('ru-RU')}):`);
+    await ctx.telegram.copyMessage(ctx.chat.id, warmup.chatId, warmup.messageId);
+  });
+
+  // === 6. Ловим контент от админа, если он в режиме broadcast или setwarmup ===
+  bot.on('message', async (ctx, next) => {
+    if (!isAdmin(ctx.from.id) || (!ctx.session?.awaitingBroadcast && !ctx.session?.awaitingWarmup)) {
+      return next();
+    }
+
+    if (ctx.session.awaitingWarmup) {
+      ctx.session.awaitingWarmup = false;
+      setWarmup({
+        chatId: ctx.chat.id,
+        messageId: ctx.message.message_id,
+        setBy: ctx.from.id,
+        setAt: Date.now()
+      });
+      return ctx.reply('✅ Сообщение для прогрева сохранено. Будет уходить всем ежедневно в 19:00 по Москве.');
+    }
+
+    if (ctx.session.awaitingBroadcast) {
+      ctx.session.awaitingBroadcast = false;
+      const users = loadUsers();
+      let sent = 0;
+      let failed = 0;
+
+      await ctx.reply(`⏳ Рассылка запущена на ${users.length} пользователей...`);
+
+      for (const userId of users) {
+        if (userId === ctx.from.id) continue;
+        try {
+          await ctx.telegram.copyMessage(userId, ctx.chat.id, ctx.message.message_id);
+          sent++;
+        } catch (e) {
+          failed++;
+        }
+        await new Promise((r) => setTimeout(r, 40));
+      }
+
+      return ctx.reply(`✅ Рассылка завершена.\nОтправлено: ${sent}\nНе доставлено: ${failed}`);
+    }
+  });
+
+  // === 7. Обработка текста (Ловим ID пользователя для Pocket Option) ===
   bot.on('text', async (ctx) => {
     if (ctx.session?.awaitingPocketId) {
       const pocketId = ctx.message.text.trim();
@@ -86,9 +170,7 @@ export function createBot(token, webAppUrl) {
 
       await ctx.reply('⏳ Проверяю твой ID в базе брокера...');
 
-      // Пауза 2 секунды
       setTimeout(async () => {
-        // Устанавливаем кнопку "Сигналы" ТОЛЬКО для этого пользователя
         if (webAppUrl) {
           try {
             await ctx.setChatMenuButton({
@@ -115,7 +197,7 @@ export function createBot(token, webAppUrl) {
     }
   });
 
-  // === 4. Справка ===
+  // === 8. Справка ===
   bot.help((ctx) => {
     ctx.reply(
       '❓ <b>Справка</b>\n\nДля начала работы отправь команду /start и следуй инструкциям.',
