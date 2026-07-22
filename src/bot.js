@@ -6,13 +6,19 @@ export function createBot(token, webAppUrl) {
 
   const bot = new Telegraf(token);
 
-  // Включаем поддержку сессий, чтобы бот мог запоминать, 
-  // что он ждет ID именно от этого пользователя
+  // Включаем поддержку сессий
   bot.use(session());
 
   // === 1. Команда /start ===
   bot.start(async (ctx) => {
-    // Первое сообщение: Приветствие и реферальная ссылка
+    // Прячем кнопку "Сигналы" (Menu Button) для новых пользователей, 
+    // сбрасывая её до стандартного состояния
+    try {
+      await ctx.setChatMenuButton({ type: 'default' });
+    } catch (e) {
+      console.error('Не удалось скрыть кнопку меню:', e);
+    }
+
     const welcomeText = `
 👉 <b>Для активации бота</b> и получения рабочей среды с 12 валютными парами и возможностью наблюдения за новостным фоном, тебе нужно создать новый аккаунт на брокере Pocket Option, по моей ссылке.
 
@@ -24,7 +30,6 @@ export function createBot(token, webAppUrl) {
       disable_web_page_preview: true 
     });
 
-    // Второе сообщение: Инструкция, правила и кнопки
     const rulesText = `
 ➡️ Вот инструкция, которая поможет тебе пройти регистрацию https://youtu.be/UpudE4bzVS4
 
@@ -37,18 +42,17 @@ export function createBot(token, webAppUrl) {
 ❓ Возникают проблемы с активацией бота? - Пиши 👉 @FominovTrade
 `;
     
+    // Оставили только ОДНУ кнопку
     await ctx.reply(rulesText, {
       parse_mode: 'HTML',
       ...Markup.inlineKeyboard([
-        [Markup.button.callback('🔑 Прошел регистрацию, проверь мой...', 'check_reg')],
-        [Markup.button.callback('⭕️ У меня уже есть свой аккаунт Pocket...', 'has_account')]
+        [Markup.button.callback('🔑 Прошел регистрацию, проверь мой...', 'check_reg')]
       ])
     });
   });
 
   // === 2. Обработка кнопки "Прошел регистрацию" ===
   bot.action('check_reg', async (ctx) => {
-    // Включаем режим ожидания ID для этого пользователя
     ctx.session ??= {};
     ctx.session.awaitingPocketId = true;
 
@@ -69,36 +73,40 @@ export function createBot(token, webAppUrl) {
     await ctx.answerCbQuery();
   });
 
-  // === 3. Обработка кнопки "У меня уже есть аккаунт" ===
-  bot.action('has_account', async (ctx) => {
-    await ctx.reply('Если у тебя уже есть аккаунт, тебе нужно удалить старый профиль и зарегистрировать новый по моей ссылке, чтобы бот смог привязаться к твоему профилю.');
-    await ctx.answerCbQuery();
-  });
-
-  // === 4. Обработка текста (Ловим ID пользователя) ===
+  // === 3. Обработка текста (Ловим ID пользователя) ===
   bot.on('text', async (ctx) => {
     if (ctx.session?.awaitingPocketId) {
       const pocketId = ctx.message.text.trim();
 
-      // Защита от ввода случайного текста вместо ID
       if (!/^\d+$/.test(pocketId)) {
         return ctx.reply('❌ Пожалуйста, отправь только цифры твоего ID (без букв и пробелов).');
       }
 
-      // Выключаем ожидание
       ctx.session.awaitingPocketId = false;
 
-      // Имитируем начало проверки
       await ctx.reply('⏳ Проверяю твой ID в базе брокера...');
 
-      // Пауза 2 секунды перед выдачей "успешного" результата
+      // Пауза 2 секунды
       setTimeout(async () => {
+        // Устанавливаем кнопку "Сигналы" ТОЛЬКО для этого пользователя
+        if (webAppUrl) {
+          try {
+            await ctx.setChatMenuButton({
+              type: 'web_app',
+              text: 'Сигналы',
+              web_app: { url: webAppUrl }
+            });
+          } catch (e) {
+            console.error('Не удалось установить кнопку меню:', e);
+          }
+        }
+
         const successText = `
 ✅ <b>ID успешно подтвержден!</b>
 
 Твой аккаунт привязан к нашему алгоритму. Теперь тебе доступен полный функционал бота.
 
-👇 <b>Нажми на кнопку «Сигналы» (Menu) слева внизу у поля ввода, чтобы открыть торговую панель!</b>
+👇 <b>Нажми на появившуюся кнопку «Сигналы» слева внизу у поля ввода, чтобы открыть торговую панель!</b>
 `;
         await ctx.reply(successText, { parse_mode: 'HTML' });
       }, 2000);
@@ -107,7 +115,7 @@ export function createBot(token, webAppUrl) {
     }
   });
 
-  // === 5. Справка ===
+  // === 4. Справка ===
   bot.help((ctx) => {
     ctx.reply(
       '❓ <b>Справка</b>\n\nДля начала работы отправь команду /start и следуй инструкциям.',
@@ -118,7 +126,6 @@ export function createBot(token, webAppUrl) {
   return bot;
 }
 
-// Позволяет по-прежнему запускать `node src/bot.js` отдельно (long polling, без веб-сервера).
 if (import.meta.url === `file://${process.argv[1]}`) {
   const bot = createBot(process.env.TELEGRAM_BOT_TOKEN, process.env.PUBLIC_URL);
   bot.launch().then(() => console.log('Бот запущен и слушает команды (long polling)'));
