@@ -28,3 +28,19 @@ if (process.env.TELEGRAM_BOT_TOKEN) {
 } else {
   console.log('TELEGRAM_BOT_TOKEN не задан — запущен только веб-сервер, без бота.');
 }
+
+// Self-ping: каждые 10 минут стучимся сами на себя, чтобы бесплатный тариф Render
+// не усыплял сервис из-за отсутствия входящих запросов.
+if (process.env.PUBLIC_URL) {
+  const PING_INTERVAL_MS = 10 * 60 * 1000;
+  setInterval(async () => {
+    try {
+      const res = await fetch(`${process.env.PUBLIC_URL}/api/health`, { signal: AbortSignal.timeout(10000) });
+      console.log(`Self-ping: ${res.status} (${new Date().toISOString()})`);
+    } catch (err) {
+      console.error('Self-ping не удался:', err.message || err);
+    }
+  }, PING_INTERVAL_MS);
+} else {
+  console.log('PUBLIC_URL не задан — self-ping выключен.');
+}
