@@ -12,9 +12,9 @@ export function createBot(token, webAppUrl) {
   // === 1. Команда /start ===
   bot.start(async (ctx) => {
     // Прячем кнопку "Сигналы" (Menu Button) для новых пользователей, 
-    // сбрасывая её до стандартного состояния
+    // принудительно переключая меню на стандартные команды
     try {
-      await ctx.setChatMenuButton({ type: 'default' });
+      await ctx.setChatMenuButton({ type: 'commands' });
     } catch (e) {
       console.error('Не удалось скрыть кнопку меню:', e);
     }
